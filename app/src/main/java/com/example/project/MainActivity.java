@@ -11,6 +11,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Surface;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,25 +23,21 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class MainActivity extends AppCompatActivity implements SensorEventListener, GPSHelper.LocationListener {
     private SensorManager sensorManager;
     private Sensor rotationVectorSensor;
     private TextView sensorData;
     private PreviewView cameraPreview;
     private Button captureButton;
-
     private CameraHelper cameraHelper;
     private GPSHelper gpsHelper;
     private float roll, pitch, yaw;
     private double latitude = 0.0, longitude = 0.0, altitude = 0.0;
+    private WindowManager windowManager;
 
     private static final int PERMISSIONS_REQUEST_CODE = 10;
     private String[] REQUIRED_PERMISSIONS;
 
-    // Initialize required permissions based on Android version
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
             REQUIRED_PERMISSIONS = new String[]{
@@ -57,7 +55,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    // Permission launcher for multiple permissions
     private final ActivityResultLauncher<String[]> permissionsLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(),
             permissionsResult -> {
@@ -65,33 +62,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 for (Boolean isGranted : permissionsResult.values()) {
                     allGranted = allGranted && isGranted;
                 }
-
                 if (allGranted) {
                     cameraHelper.startCamera();
                     gpsHelper.requestLocationUpdates();
                 } else {
-                    // Check which permissions were denied
-                    List<String> deniedPermissions = new ArrayList<>();
-                    for (String permission : REQUIRED_PERMISSIONS) {
-                        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                            deniedPermissions.add(permission);
-                        }
-                    }
-
-                    // Show appropriate message
-                    if (deniedPermissions.contains(Manifest.permission.CAMERA)) {
-                        Toast.makeText(this, "Camera permission is required for this app", Toast.LENGTH_SHORT).show();
-                    }
-
-                    if (deniedPermissions.contains(Manifest.permission.WRITE_EXTERNAL_STORAGE) ||
-                            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    deniedPermissions.contains(Manifest.permission.READ_MEDIA_IMAGES))) {
-                        Toast.makeText(this, "Storage permissions are required to save photos", Toast.LENGTH_SHORT).show();
-                    }
-
-                    if (deniedPermissions.contains(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                        Toast.makeText(this, "Location permission is required for GPS data", Toast.LENGTH_SHORT).show();
-                    }
+                    Toast.makeText(this, "Permissions required!", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -100,27 +75,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize views
         sensorData = findViewById(R.id.gyroData);
         cameraPreview = findViewById(R.id.cameraPreview);
         captureButton = findViewById(R.id.captureButton);
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
-        // Initialize Sensor Manager
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
             rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-            if (rotationVectorSensor != null) {
+            if (rotationVectorSensor != null)
                 sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_UI);
-            } else {
-                sensorData.setText("Rotation Vector Sensor not available!");
-            }
         }
 
-        // Initialize helpers
         cameraHelper = new CameraHelper(this, cameraPreview);
         gpsHelper = new GPSHelper(this, this);
 
-        // Check permissions
         if (allPermissionsGranted()) {
             cameraHelper.startCamera();
             gpsHelper.requestLocationUpdates();
@@ -128,7 +97,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             requestPermissions();
         }
 
-        // Set up capture button listener
         captureButton.setOnClickListener(view -> takePicture());
     }
 
@@ -146,17 +114,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void takePicture() {
-        // Create a sensor data object with current values
         CameraHelper.SensorData currentSensorData = new CameraHelper.SensorData(
                 roll, pitch, yaw, latitude, longitude, altitude
         );
 
-        // Take picture using the camera helper
         cameraHelper.takePicture(currentSensorData, new CameraHelper.CaptureCallback() {
             @Override
             public void onImageCaptured(Uri imageUri) {
                 try {
-                    // Launch the image details activity
                     Intent intent = new Intent(MainActivity.this, ImageDetailsActivity.class);
                     intent.putExtra("image_uri", imageUri);
                     intent.putExtra("latitude", latitude);
@@ -165,12 +130,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     intent.putExtra("roll", roll);
                     intent.putExtra("pitch", pitch);
                     intent.putExtra("yaw", yaw);
-
-                    // Add flags to start a new task
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    // Grant URI permission to the new activity
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
                     startActivity(intent);
                 } catch (Exception e) {
                     Log.e("MainActivity", "Error launching image details activity", e);
@@ -190,18 +151,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
             float[] rotationMatrix = new float[9];
             float[] orientationAngles = new float[3];
-
-            // Convert rotation vector to rotation matrix
             SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-
-            // Convert rotation matrix to Euler angles
             SensorManager.getOrientation(rotationMatrix, orientationAngles);
 
-            // Convert radians to degrees
-            roll = (float) Math.toDegrees(orientationAngles[2]);  // Z-axis
-            pitch = (float) Math.toDegrees(orientationAngles[1]); // Y-axis
-            yaw = (float) Math.toDegrees(orientationAngles[0]);   // X-axis
+            yaw = (float) Math.toDegrees(orientationAngles[0]);
+            pitch = (float) Math.toDegrees(orientationAngles[1]);
+            roll = (float) Math.toDegrees(orientationAngles[2]);
 
+            int rotation = windowManager.getDefaultDisplay().getRotation();
+            if (rotation == Surface.ROTATION_90) {
+                float temp = roll;
+                roll = -pitch;
+                pitch = temp;
+            } else if (rotation == Surface.ROTATION_180) {
+                pitch = -pitch;
+                roll = -roll;
+            } else if (rotation == Surface.ROTATION_270) {
+                float temp = roll;
+                roll = pitch;
+                pitch = -temp;
+            }
             updateDisplay();
         }
     }
@@ -225,7 +194,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // Not needed
     }
 
     @Override
@@ -238,11 +206,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume() {
         super.onResume();
-        if (rotationVectorSensor != null) {
-            sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_UI);
-        }
-
-        // If permissions are granted, request updates and start camera
         if (allPermissionsGranted()) {
             gpsHelper.requestLocationUpdates();
             cameraHelper.startCamera();
