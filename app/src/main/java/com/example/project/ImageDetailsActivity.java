@@ -47,6 +47,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private Button detectButton;
     private ImageView resultImageView;
     private TextView detectedBodiesTextView;
+    private TextView serverUrlTextView;
 
     private Uri imageUri;
     private float roll;
@@ -68,6 +69,11 @@ public class ImageDetailsActivity extends AppCompatActivity {
         detectButton = findViewById(R.id.detectButton);
         resultImageView = findViewById(R.id.resultImageView);
         detectedBodiesTextView = findViewById(R.id.detectedBodiesTextView);
+        serverUrlTextView = findViewById(R.id.serverUrlTextView);
+
+        // Display the current server URL
+        String currentServerUrl = ApiClient.getBaseUrl(this);
+        serverUrlTextView.setText("Server: " + currentServerUrl);
 
         try {
             // Get data from intent
@@ -189,6 +195,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, "Failed to save image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
+
     private void detectCelestialBodies() {
         try {
             progressBar.setVisibility(View.VISIBLE);
@@ -210,8 +217,8 @@ public class ImageDetailsActivity extends AppCompatActivity {
                     roll, pitch, yaw, latitude, longitude, timestamp, encodedImage
             );
 
-            // Make API call
-            CelestialBodyApiService apiService = ApiClient.getApiService();
+            // Make API call using the context to get the user-configured BASE_URL
+            CelestialBodyApiService apiService = ApiClient.getApiService(this);
             Call<DetectionResponse> call = apiService.detectCelestialBodies(request);
 
             call.enqueue(new Callback<DetectionResponse>() {

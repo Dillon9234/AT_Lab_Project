@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,12 +24,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
+import com.example.project.api.ApiClient;
+
 public class MainActivity extends AppCompatActivity implements SensorEventListener, GPSHelper.LocationListener {
     private SensorManager sensorManager;
     private Sensor rotationVectorSensor;
     private TextView sensorData;
     private PreviewView cameraPreview;
     private Button captureButton;
+    private EditText serverUrlInput;
+    private Button saveUrlButton;
     private CameraHelper cameraHelper;
     private GPSHelper gpsHelper;
     private float roll, pitch, yaw;
@@ -78,7 +83,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorData = findViewById(R.id.gyroData);
         cameraPreview = findViewById(R.id.cameraPreview);
         captureButton = findViewById(R.id.captureButton);
+        serverUrlInput = findViewById(R.id.serverUrlInput);
+        saveUrlButton = findViewById(R.id.saveUrlButton);
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+
+        // Initialize server URL input with current value
+        serverUrlInput.setText(ApiClient.getBaseUrl(this));
+
+        // Configure save button
+        saveUrlButton.setOnClickListener(view -> {
+            String url = serverUrlInput.getText().toString().trim();
+            if (url.isEmpty()) {
+                Toast.makeText(this, "Please enter a valid URL", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Ensure URL ends with a slash for Retrofit
+            if (!url.endsWith("/")) {
+                url += "/";
+            }
+
+            ApiClient.setBaseUrl(this, url);
+            Toast.makeText(this, "Server URL saved", Toast.LENGTH_SHORT).show();
+        });
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -199,7 +226,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onPause() {
         super.onPause();
-        sensorManager.unregisterListener(this);
+        // Safely unregister sensor listener
+        if (sensorManager != null && rotationVectorSensor != null) {
+            sensorManager.unregisterListener(this);
+        }
+
+        // Stop GPS updates
         gpsHelper.stopLocationUpdates();
     }
 
@@ -207,7 +239,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onResume() {
         super.onResume();
         if (allPermissionsGranted()) {
+            // Re-register sensor listener
+            if (rotationVectorSensor != null) {
+                sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_UI);
+            }
+
+            // Request GPS location updates
             gpsHelper.requestLocationUpdates();
+
+            // Restart camera
             cameraHelper.startCamera();
         }
     }
