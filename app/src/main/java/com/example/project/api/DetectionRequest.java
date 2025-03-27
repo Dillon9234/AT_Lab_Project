@@ -2,17 +2,18 @@ package com.example.project.api;
 
 import com.google.gson.annotations.SerializedName;
 
-import java.util.List;
-
 public class DetectionRequest {
-    @SerializedName("roll")
-    private float roll;
+    @SerializedName("quaternion_x")
+    private float quaternionX;
 
-    @SerializedName("pitch")
-    private float pitch;
+    @SerializedName("quaternion_y")
+    private float quaternionY;
 
-    @SerializedName("yaw")
-    private float yaw;
+    @SerializedName("quaternion_z")
+    private float quaternionZ;
+
+    @SerializedName("quaternion_w")
+    private float quaternionW;
 
     @SerializedName("latitude")
     private double latitude;
@@ -29,11 +30,12 @@ public class DetectionRequest {
     // Constructors
     public DetectionRequest() {}
 
-    public DetectionRequest(float roll, float pitch, float yaw, double latitude,
-                            double longitude, String timestamp, String imageBase64) {
-        this.roll = roll;
-        this.pitch = pitch;
-        this.yaw = yaw;
+    public DetectionRequest(float quaternionX, float quaternionY, float quaternionZ, float quaternionW,
+                            double latitude, double longitude, String timestamp, String imageBase64) {
+        this.quaternionX = quaternionX;
+        this.quaternionY = quaternionY;
+        this.quaternionZ = quaternionZ;
+        this.quaternionW = quaternionW;
         this.latitude = latitude;
         this.longitude = longitude;
         this.timestamp = timestamp;
@@ -41,14 +43,17 @@ public class DetectionRequest {
     }
 
     // Getters and setters
-    public float getRoll() { return roll; }
-    public void setRoll(float roll) { this.roll = roll; }
+    public float getQuaternionX() { return quaternionX; }
+    public void setQuaternionX(float quaternionX) { this.quaternionX = quaternionX; }
 
-    public float getPitch() { return pitch; }
-    public void setPitch(float pitch) { this.pitch = pitch; }
+    public float getQuaternionY() { return quaternionY; }
+    public void setQuaternionY(float quaternionY) { this.quaternionY = quaternionY; }
 
-    public float getYaw() { return yaw; }
-    public void setYaw(float yaw) { this.yaw = yaw; }
+    public float getQuaternionZ() { return quaternionZ; }
+    public void setQuaternionZ(float quaternionZ) { this.quaternionZ = quaternionZ; }
+
+    public float getQuaternionW() { return quaternionW; }
+    public void setQuaternionW(float quaternionW) { this.quaternionW = quaternionW; }
 
     public double getLatitude() { return latitude; }
     public void setLatitude(double latitude) { this.latitude = latitude; }
@@ -62,4 +67,3 @@ public class DetectionRequest {
     public String getImageBase64() { return imageBase64; }
     public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
 }
-

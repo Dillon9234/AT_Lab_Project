@@ -50,9 +50,11 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private TextView serverUrlTextView;
 
     private Uri imageUri;
-    private float roll;
-    private float pitch;
-    private float yaw;
+    // Replace roll, pitch, yaw with quaternion components
+    private float quaternionX;
+    private float quaternionY;
+    private float quaternionZ;
+    private float quaternionW;
     private double latitude;
     private double longitude;
     private double altitude;
@@ -88,9 +90,12 @@ public class ImageDetailsActivity extends AppCompatActivity {
                 latitude = getIntent().getDoubleExtra("latitude", 0.0);
                 longitude = getIntent().getDoubleExtra("longitude", 0.0);
                 altitude = getIntent().getDoubleExtra("altitude", 0.0);
-                roll = getIntent().getFloatExtra("roll", 0.0f);
-                pitch = getIntent().getFloatExtra("pitch", 0.0f);
-                yaw = getIntent().getFloatExtra("yaw", 0.0f);
+
+                // Get quaternion components instead of roll, pitch, yaw
+                quaternionX = getIntent().getFloatExtra("quaternion_x", 0.0f);
+                quaternionY = getIntent().getFloatExtra("quaternion_y", 0.0f);
+                quaternionZ = getIntent().getFloatExtra("quaternion_z", 0.0f);
+                quaternionW = getIntent().getFloatExtra("quaternion_w", 0.0f);
 
                 // Display image
                 if (imageUri != null) {
@@ -118,14 +123,13 @@ public class ImageDetailsActivity extends AppCompatActivity {
                     Toast.makeText(this, "Error: Image URI is null", Toast.LENGTH_SHORT).show();
                 }
 
-                // Display sensor data
+                // Display sensor data with quaternion values
                 String data = String.format(
-                        "Orientation:\nRoll: %.2f°\nPitch: %.2f°\nYaw: %.2f°\n\n" +
+                        "Orientation (Quaternion):\nX: %.4f\nY: %.4f\nZ: %.4f\nW: %.4f\n\n" +
                                 "GPS Location:\nLatitude: %.6f\nLongitude: %.6f\nAltitude: %.2f m",
-                        roll, pitch, yaw, latitude, longitude, altitude
+                        quaternionX, quaternionY, quaternionZ, quaternionW, latitude, longitude, altitude
                 );
                 detailDataTextView.setText(data);
-
                 Log.d(TAG, "Data loaded successfully");
 
                 // Set up detect button
@@ -183,8 +187,8 @@ public class ImageDetailsActivity extends AppCompatActivity {
 
                     // Add to gallery
                     MediaScannerConnection.scanFile(this,
-                            new String[] { file.getAbsolutePath() },
-                            new String[] { "image/jpeg" },
+                            new String[]{file.getAbsolutePath()},
+                            new String[]{"image/jpeg"},
                             null);
 
                     Toast.makeText(this, "Image saved to gallery", Toast.LENGTH_SHORT).show();
@@ -195,6 +199,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, "Failed to save image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
+
 
     private void detectCelestialBodies() {
         try {
@@ -212,9 +217,9 @@ public class ImageDetailsActivity extends AppCompatActivity {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
             String timestamp = sdf.format(new Date());
 
-            // Create request
             DetectionRequest request = new DetectionRequest(
-                    roll, pitch, yaw, latitude, longitude, timestamp, encodedImage
+                    quaternionX, quaternionY, quaternionZ, quaternionW,
+                    latitude, longitude, timestamp, encodedImage
             );
 
             // Make API call using the context to get the user-configured BASE_URL

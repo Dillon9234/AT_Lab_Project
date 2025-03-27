@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Button saveUrlButton;
     private CameraHelper cameraHelper;
     private GPSHelper gpsHelper;
-    private float roll, pitch, yaw;
+    private float qx, qy, qz, qw;
     private double latitude = 0.0, longitude = 0.0, altitude = 0.0;
     private WindowManager windowManager;
 
@@ -141,11 +141,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void takePicture() {
-        CameraHelper.SensorData currentSensorData = new CameraHelper.SensorData(
-                roll, pitch, yaw, latitude, longitude, altitude
-        );
 
-        cameraHelper.takePicture(currentSensorData, new CameraHelper.CaptureCallback() {
+        cameraHelper.takePicture(new CameraHelper.CaptureCallback() {
             @Override
             public void onImageCaptured(Uri imageUri) {
                 try {
@@ -154,9 +151,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     intent.putExtra("latitude", latitude);
                     intent.putExtra("longitude", longitude);
                     intent.putExtra("altitude", altitude);
-                    intent.putExtra("roll", roll);
-                    intent.putExtra("pitch", pitch);
-                    intent.putExtra("yaw", yaw);
+                    intent.putExtra("quaternion_x", qx);
+                    intent.putExtra("quaternion_y", qy);
+                    intent.putExtra("quaternion_z", qz);
+                    intent.putExtra("quaternion_w", qw);
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     startActivity(intent);
@@ -173,31 +171,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         });
     }
 
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-            float[] rotationMatrix = new float[9];
-            float[] orientationAngles = new float[3];
-            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-            SensorManager.getOrientation(rotationMatrix, orientationAngles);
+            // Get quaternion directly from rotation vector
+            float[] quaternion = new float[4];
+            SensorManager.getQuaternionFromVector(quaternion, event.values);
 
-            yaw = (float) Math.toDegrees(orientationAngles[0]);
-            pitch = (float) Math.toDegrees(orientationAngles[1]);
-            roll = (float) Math.toDegrees(orientationAngles[2]);
+            // Store quaternion components to class variables
+            this.qw = quaternion[0];
+            this.qx = quaternion[1];
+            this.qy = quaternion[2];
+            this.qz = quaternion[3];
 
-            int rotation = windowManager.getDefaultDisplay().getRotation();
-            if (rotation == Surface.ROTATION_90) {
-                float temp = roll;
-                roll = -pitch;
-                pitch = temp;
-            } else if (rotation == Surface.ROTATION_180) {
-                pitch = -pitch;
-                roll = -roll;
-            } else if (rotation == Surface.ROTATION_270) {
-                float temp = roll;
-                roll = pitch;
-                pitch = -temp;
-            }
+            // For display purposes, still calculate Euler angles
+//            float[] rotationMatrix = new float[9];
+//            float[] orientationAngles = new float[3];
+//            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+//            SensorManager.getOrientation(rotationMatrix, orientationAngles);
+
+            // Calculate celestial coordinates using quaternion
+//            AstronomicalCalculator.CelestialCoordinates coords =
+//                    AstronomicalCalculator.calculateCoordinatesFromQuaternion(
+//                            latitude, longitude, altitude, qx, qy, qz, qw);
+
             updateDisplay();
         }
     }
@@ -211,10 +209,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void updateDisplay() {
+        AstronomicalCalculator.CelestialCoordinates coords =
+                AstronomicalCalculator.calculateCoordinatesFromQuaternion(
+                        latitude, longitude, altitude, qx, qy, qz, qw);
+
         String data = String.format(
-                "Orientation:\nRoll: %.2f°\nPitch: %.2f°\nYaw: %.2f°\n\n" +
-                        "GPS Location:\nLatitude: %.6f\nLongitude: %.6f\nAltitude: %.2f m",
-                roll, pitch, yaw, latitude, longitude, altitude
+                        "Quaternion:\nX: %.4f\nY: %.4f\nZ: %.4f\nW: %.4f\n\n"+
+                        "GPS Location:\nLatitude: %.6f\nLongitude: %.6f\nAltitude: %.2f m\n\n" +
+                        "Celestial Coordinates:\nRA: %.2f hours\nDec: %.2f°\nAz: %.2f°\nAlt: %.2f°",
+                qx, qy, qz, qw,latitude, longitude, altitude,
+                coords.rightAscension, coords.declination, coords.azimuth, coords.altitude
         );
         sensorData.setText(data);
     }

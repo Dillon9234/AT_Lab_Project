@@ -76,7 +76,7 @@ public class CameraHelper {
         }, ContextCompat.getMainExecutor(activity));
     }
 
-    public void takePicture(SensorData sensorData, CaptureCallback callback) {
+    public void takePicture(CaptureCallback callback) {
         if (imageCapture == null) {
             Toast.makeText(activity, "Camera not initialized", Toast.LENGTH_SHORT).show();
             return;
@@ -158,23 +158,5 @@ public class CameraHelper {
 
     public void release() {
         imageCapture = null;
-    }
-
-    public static class SensorData {
-        public final float roll;
-        public final float pitch;
-        public final float yaw;
-        public final double latitude;
-        public final double longitude;
-        public final double altitude;
-
-        public SensorData(float roll, float pitch, float yaw, double latitude, double longitude, double altitude) {
-            this.roll = roll;
-            this.pitch = pitch;
-            this.yaw = yaw;
-            this.latitude = latitude;
-            this.longitude = longitude;
-            this.altitude = altitude;
-        }
     }
 }
