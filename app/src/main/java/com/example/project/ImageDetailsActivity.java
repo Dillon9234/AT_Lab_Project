@@ -2,7 +2,6 @@ package com.example.project;
 
 import android.content.ContentValues;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -11,24 +10,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.example.project.api.ApiClient;
-import com.example.project.api.CelestialBody;
-import com.example.project.api.CelestialBodyApiService;
-import com.example.project.api.DetectionRequest;
-import com.example.project.api.DetectionResponse;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,20 +26,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-
 public class ImageDetailsActivity extends AppCompatActivity {
     private static final String TAG = "ImageDetailsActivity";
     private ImageView detailImageView;
     private TextView detailDataTextView;
-    private TextView celestialCoordinatesTextView;
-    private ProgressBar progressBar;
     private Button detectButton;
     private ImageView resultImageView;
     private TextView detectedBodiesTextView;
-    private TextView serverUrlTextView;
 
     private Uri imageUri;
     // Replace roll, pitch, yaw with quaternion components
@@ -64,9 +45,6 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private double altitude;
     private Bitmap originalBitmap;
     private Bitmap starMapBitmap;
-    private PixelToCelestialConverter converter;
-    private TextView starInfoTextView;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,15 +53,9 @@ public class ImageDetailsActivity extends AppCompatActivity {
         // Initialize views
         detailImageView = findViewById(R.id.detailImageView);
         detailDataTextView = findViewById(R.id.detailDataTextView);
-        progressBar = findViewById(R.id.progressBar);
         detectButton = findViewById(R.id.detectButton);
         resultImageView = findViewById(R.id.resultImageView);
         detectedBodiesTextView = findViewById(R.id.detectedBodiesTextView);
-        serverUrlTextView = findViewById(R.id.serverUrlTextView);
-
-        // Display the current server URL
-        String currentServerUrl = ApiClient.getBaseUrl(this);
-        serverUrlTextView.setText("Server: " + currentServerUrl);
 
         try {
             // Get data from intent

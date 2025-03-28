@@ -5,84 +5,64 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/black"
     tools:context=".MainActivity">
 
-    <!-- Adding tools:background helps visualize in layout editor -->
+    <!-- Camera Preview covering most of the screen -->
     <androidx.camera.view.PreviewView
         android:id="@+id/cameraPreview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginBottom="140dp"
+        android:scaleType="fitCenter"
         app:layout_constraintBottom_toTopOf="@+id/captureButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:background="@android:color/darker_gray"
-        tools:visibility="visible" />
+        app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- ImageView for captured image (hidden by default) -->
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginBottom="140dp"
         android:scaleType="centerCrop"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/captureButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:src="@tools:sample/backgrounds/scenic"
-        tools:visibility="visible" />
+        tools:src="@tools:sample/backgrounds/scenic" />
 
-    <LinearLayout
-        android:id="@+id/serverUrlLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/captureButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <EditText
-            android:id="@+id/serverUrlInput"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Server URL (e.g., http://192.168.0.104:5000)"
-            android:inputType="textUri"
-            android:padding="8dp" />
-
-        <Button
-            android:id="@+id/saveUrlButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Save" />
-    </LinearLayout>
-
+    <!-- Capture Button (Minimal & Modern) -->
     <Button
         android:id="@+id/captureButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_margin="16dp"
-        android:layout_marginBottom="16dp"
-        android:text="Capture Image"
+        android:layout_width="160dp"
+        android:layout_height="45dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/rounded_button"
+        android:text="Capture"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="14sp"
         app:layout_constraintBottom_toTopOf="@+id/gyroData"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <!-- Gyro and GPS Data (Smaller Text, Less Space) -->
     <TextView
         android:id="@+id/gyroData"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:layout_margin="8dp"
+        android:padding="8dp"
+        android:background="@drawable/textview_bg"
         android:fontFamily="monospace"
-        android:text="Orientation:\nRoll: 0.00°\nPitch: 0.00°\nYaw: 0.00°\n\nGPS Location:\nLatitude: 0.000000\nLongitude: 0.000000\nAltitude: 0.00 m"
+        android:text="Orientation:\nRoll: 0.00°\nPitch: 0.00°\nYaw: 0.00°\n\nGPS:\nLat: 0.000000\nLong: 0.000000\nAlt: 0.00 m"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:textAlignment="center"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        android:textAlignment="center"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="10dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

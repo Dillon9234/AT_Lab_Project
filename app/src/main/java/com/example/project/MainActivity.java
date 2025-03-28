@@ -24,21 +24,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
-import com.example.project.api.ApiClient;
-
 public class MainActivity extends AppCompatActivity implements SensorEventListener, GPSHelper.LocationListener {
     private SensorManager sensorManager;
     private Sensor rotationVectorSensor;
     private TextView sensorData;
     private PreviewView cameraPreview;
     private Button captureButton;
-    private EditText serverUrlInput;
-    private Button saveUrlButton;
     private CameraHelper cameraHelper;
     private GPSHelper gpsHelper;
     private float qx, qy, qz, qw;
     private double latitude = 0.0, longitude = 0.0, altitude = 0.0;
-    private WindowManager windowManager;
 
     private static final int PERMISSIONS_REQUEST_CODE = 10;
     private String[] REQUIRED_PERMISSIONS;
@@ -83,29 +78,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorData = findViewById(R.id.gyroData);
         cameraPreview = findViewById(R.id.cameraPreview);
         captureButton = findViewById(R.id.captureButton);
-        serverUrlInput = findViewById(R.id.serverUrlInput);
-        saveUrlButton = findViewById(R.id.saveUrlButton);
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-
-        // Initialize server URL input with current value
-        serverUrlInput.setText(ApiClient.getBaseUrl(this));
-
-        // Configure save button
-        saveUrlButton.setOnClickListener(view -> {
-            String url = serverUrlInput.getText().toString().trim();
-            if (url.isEmpty()) {
-                Toast.makeText(this, "Please enter a valid URL", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Ensure URL ends with a slash for Retrofit
-            if (!url.endsWith("/")) {
-                url += "/";
-            }
-
-            ApiClient.setBaseUrl(this, url);
-            Toast.makeText(this, "Server URL saved", Toast.LENGTH_SHORT).show();
-        });
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -184,17 +156,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             this.qx = quaternion[1];
             this.qy = quaternion[2];
             this.qz = quaternion[3];
-
-            // For display purposes, still calculate Euler angles
-//            float[] rotationMatrix = new float[9];
-//            float[] orientationAngles = new float[3];
-//            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-//            SensorManager.getOrientation(rotationMatrix, orientationAngles);
-
-            // Calculate celestial coordinates using quaternion
-//            AstronomicalCalculator.CelestialCoordinates coords =
-//                    AstronomicalCalculator.calculateCoordinatesFromQuaternion(
-//                            latitude, longitude, altitude, qx, qy, qz, qw);
 
             updateDisplay();
         }
