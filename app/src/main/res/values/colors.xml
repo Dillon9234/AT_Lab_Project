@@ -4,4 +4,5 @@
     <color name="black">#121212</color>
     <color name="dark_gray">#1E1E1E</color>
     <color name="primary">#6200EE</color>
+    <color name="purple_500">#9C27B0</color>
 </resources>

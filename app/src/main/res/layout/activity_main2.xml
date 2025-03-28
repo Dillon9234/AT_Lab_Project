@@ -1,61 +1,76 @@
-<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ImageDetailsActivity">
+    android:fillViewport="true"
+    android:background="@color/black"> <!-- Set background color to black -->
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="16dp"
+        android:gravity="center_horizontal">
 
+        <!-- Original Image with padding on top -->
         <ImageView
             android:id="@+id/detailImageView"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:scaleType="centerCrop"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
             android:contentDescription="Captured image"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp" />
 
+        <!-- Image Details -->
         <TextView
             android:id="@+id/detailDataTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="16sp"
+            android:textColor="@color/white"
+            android:padding="8dp"
             android:layout_marginBottom="16dp" />
 
+        <!-- Detection Button -->
         <Button
             android:id="@+id/detectButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Detect Celestial Bodies"
+            android:backgroundTint="@color/purple_500"
+            android:textColor="@color/white"
             android:layout_marginBottom="16dp" />
 
+        <!-- Loading Indicator -->
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
             android:visibility="gone"
             android:layout_marginBottom="16dp" />
 
+        <!-- Detection Result Text -->
         <TextView
             android:id="@+id/detectedBodiesTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
             android:visibility="gone"
+            android:padding="8dp"
             android:layout_marginBottom="16dp" />
 
+        <!-- Processed Image -->
         <ImageView
             android:id="@+id/resultImageView"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:scaleType="centerCrop"
-            android:contentDescription="Result image with celestial bodies"
-            android:visibility="gone" />
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="Processed image with celestial bodies"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp" />
     </LinearLayout>
 </ScrollView>

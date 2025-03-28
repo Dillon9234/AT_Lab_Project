@@ -11,10 +11,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Surface;
-import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -174,11 +171,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 AstronomicalCalculator.calculateCoordinatesFromQuaternion(
                         latitude, longitude, altitude, qx, qy, qz, qw);
 
+//        String data = String.format(
+//                        "Quaternion:\nX: %.4f\nY: %.4f\nZ: %.4f\nW: %.4f\n\n"+
+//                        "GPS Location:\nLatitude: %.6f\nLongitude: %.6f\nAltitude: %.2f m\n\n" +
+//                        "Celestial Coordinates:\nRA: %.2f hours\nDec: %.2f°\nAz: %.2f°\nAlt: %.2f°",
+//                qx, qy, qz, qw,latitude, longitude, altitude,
+//                coords.rightAscension, coords.declination, coords.azimuth, coords.altitude
+//        );
         String data = String.format(
-                        "Quaternion:\nX: %.4f\nY: %.4f\nZ: %.4f\nW: %.4f\n\n"+
-                        "GPS Location:\nLatitude: %.6f\nLongitude: %.6f\nAltitude: %.2f m\n\n" +
                         "Celestial Coordinates:\nRA: %.2f hours\nDec: %.2f°\nAz: %.2f°\nAlt: %.2f°",
-                qx, qy, qz, qw,latitude, longitude, altitude,
                 coords.rightAscension, coords.declination, coords.azimuth, coords.altitude
         );
         sensorData.setText(data);
