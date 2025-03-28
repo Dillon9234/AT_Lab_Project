@@ -3,6 +3,9 @@ package com.example.project;
 import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
@@ -32,6 +35,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import retrofit2.Call;
@@ -58,6 +62,10 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private double latitude;
     private double longitude;
     private double altitude;
+    private Bitmap originalBitmap;
+    private Bitmap starMapBitmap;
+    private PixelToCelestialConverter converter;
+    private TextView starInfoTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -200,95 +208,85 @@ public class ImageDetailsActivity extends AppCompatActivity {
         }
     }
 
-
     private void detectCelestialBodies() {
         try {
-            progressBar.setVisibility(View.VISIBLE);
-            detectButton.setEnabled(false);
+            // Load the image
+            originalBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+            int width = originalBitmap.getWidth();
+            int height = originalBitmap.getHeight();
 
-            // Convert image to base64
-            Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
-            byte[] byteArray = byteArrayOutputStream.toByteArray();
-            String encodedImage = Base64.encodeToString(byteArray, Base64.DEFAULT);
+            // Create a copy of the bitmap to draw on
+            starMapBitmap = originalBitmap.copy(originalBitmap.getConfig(), true);
+            Canvas canvas = new Canvas(starMapBitmap);
 
-            // Get current timestamp
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
-            String timestamp = sdf.format(new Date());
+            // Create paint for drawing stars
+            Paint starPaint = new Paint();
+            starPaint.setColor(Color.GREEN);
+            starPaint.setStyle(Paint.Style.STROKE);
+            starPaint.setStrokeWidth(2);
 
-            DetectionRequest request = new DetectionRequest(
-                    quaternionX, quaternionY, quaternionZ, quaternionW,
-                    latitude, longitude, timestamp, encodedImage
-            );
+            Paint textPaint = new Paint();
+            textPaint.setColor(Color.YELLOW);
+            textPaint.setTextSize(24);
 
-            // Make API call using the context to get the user-configured BASE_URL
-            CelestialBodyApiService apiService = ApiClient.getApiService(this);
-            Call<DetectionResponse> call = apiService.detectCelestialBodies(request);
+            // Get the celestial coordinates at the center of the image from quaternion
+            AstronomicalCalculator.CelestialCoordinates centerCoords =
+                    AstronomicalCalculator.calculateCoordinatesFromQuaternion(
+                            latitude, longitude, altitude,
+                            quaternionX, quaternionY, quaternionZ, quaternionW);
 
-            call.enqueue(new Callback<DetectionResponse>() {
-                @Override
-                public void onResponse(Call<DetectionResponse> call, Response<DetectionResponse> response) {
-                    progressBar.setVisibility(View.GONE);
-                    detectButton.setEnabled(true);
+            // Estimate field of view based on device camera (this should be calibrated)
+            double fovDegrees = 66.0; // Example value, should be calibrated for your device
 
-                    if (response.isSuccessful() && response.body() != null) {
-                        DetectionResponse detectionResponse = response.body();
+            // Create the WCS converter
+            PixelToCelestialConverter converter = new PixelToCelestialConverter(
+                    width, height, centerCoords, fovDegrees);
 
-                        if ("success".equals(detectionResponse.getStatus())) {
-                            // Display result image
-                            String base64Image = detectionResponse.getResultImage();
-                            byte[] decodedString = Base64.decode(base64Image, Base64.DEFAULT);
-                            Bitmap resultBitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                            resultImageView.setImageBitmap(resultBitmap);
-                            resultImageView.setVisibility(View.VISIBLE);
+            // Get stars that should be visible in this field of view
+            List<StarDatabase.Star> visibleStars = StarDatabase.getStarsInFieldOfView(
+                    centerCoords.rightAscension, centerCoords.declination,
+                    fovDegrees, fovDegrees * height / width, 4.0); // Show stars up to magnitude 4
 
-                            // Save the image to gallery
-                            saveImageToGallery(resultBitmap);
+            // Build a string with star information
+            StringBuilder starInfo = new StringBuilder("Potential stars in view:\n");
 
-                            // Display detected bodies
-                            if (detectionResponse.getDetectedBodies() != null && !detectionResponse.getDetectedBodies().isEmpty()) {
-                                StringBuilder bodiesText = new StringBuilder("Detected Celestial Bodies:\n");
-                                for (CelestialBody body : detectionResponse.getDetectedBodies()) {
-                                    bodiesText.append(body.getName())
-                                            .append(" (Magnitude: ")
-                                            .append(body.getMagnitude())
-                                            .append(")\n");
-                                }
-                                detectedBodiesTextView.setText(bodiesText.toString());
-                                detectedBodiesTextView.setVisibility(View.VISIBLE);
-                            } else {
-                                detectedBodiesTextView.setText("No celestial bodies detected");
-                                detectedBodiesTextView.setVisibility(View.VISIBLE);
-                            }
-                        } else {
-                            Toast.makeText(ImageDetailsActivity.this,
-                                    "Error: " + detectionResponse.getError(),
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        Toast.makeText(ImageDetailsActivity.this,
-                                "Error: " + (response.errorBody() != null ? response.errorBody().toString() : "Unknown error"),
-                                Toast.LENGTH_SHORT).show();
-                    }
+            // For each star, find its pixel position and mark it
+            for (StarDatabase.Star star : visibleStars) {
+                // Use the proper WCS transformation to get pixel coordinates
+                double[] pixelCoords = converter.celestialToPixel(star.rightAscension, star.declination);
+
+                // Check if the star is within the image bounds
+                if (!Double.isNaN(pixelCoords[0]) && !Double.isNaN(pixelCoords[1]) &&
+                        pixelCoords[0] >= 0 && pixelCoords[0] < width &&
+                        pixelCoords[1] >= 0 && pixelCoords[1] < height) {
+
+                    // Draw a circle around the star
+                    canvas.drawCircle((float)pixelCoords[0], (float)pixelCoords[1], 20, starPaint);
+
+                    // Draw the star name
+                    canvas.drawText(star.name, (float)pixelCoords[0] - 10, (float)pixelCoords[1] - 25, textPaint);
+
+                    // Add to info text
+                    starInfo.append(star.name)
+                            .append(" (Mag: ")
+                            .append(String.format("%.2f", star.magnitude))
+                            .append(")\n");
                 }
+            }
 
-                @Override
-                public void onFailure(Call<DetectionResponse> call, Throwable t) {
-                    progressBar.setVisibility(View.GONE);
-                    detectButton.setEnabled(true);
-                    Log.e(TAG, "API call failed", t);
-                    Toast.makeText(ImageDetailsActivity.this,
-                            "Network error: " + t.getMessage(),
-                            Toast.LENGTH_SHORT).show();
-                }
-            });
+            // Display the annotated image
+            resultImageView.setImageBitmap(starMapBitmap);
+            resultImageView.setVisibility(View.VISIBLE);
+
+            // Display star information
+            detectedBodiesTextView.setText(starInfo.toString());
+            detectedBodiesTextView.setVisibility(View.VISIBLE);
+            saveImageToGallery(starMapBitmap);
 
         } catch (Exception e) {
-            progressBar.setVisibility(View.GONE);
-            detectButton.setEnabled(true);
-            Log.e(TAG, "Error preparing API call", e);
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Error identifying stars", e);
+            Toast.makeText(this, "Error identifying stars: " + e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 }
