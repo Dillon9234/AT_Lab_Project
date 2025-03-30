@@ -182,6 +182,11 @@ public class ImageDetailsActivity extends AppCompatActivity {
 
     private void detectCelestialBodies() {
         try {
+            if (!StarDatabase.isStarDataLoaded()) {
+                Toast.makeText(this, "Star database not loaded. Please try again later.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
             // Load the image
             originalBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
             int width = originalBitmap.getWidth();
@@ -240,9 +245,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
 
                     // Add to info text
                     starInfo.append(star.name)
-                            .append(" (Mag: ")
-                            .append(String.format("%.2f", star.magnitude))
-                            .append(")\n");
+                            .append("\n");
                 }
             }
 

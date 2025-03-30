@@ -1,37 +1,87 @@
 package com.example.project;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
-import java.util.TimeZone;
 
 public class StarDatabase {
     private static final List<Star> stars = new ArrayList<>();
+    private static boolean isDataLoaded = false;
+    private static int totalLineCount = 0;
 
-    // Static initialization block to populate the database
+    // Load stars from the JSON file
     static {
-        // Add some well-known bright stars
-        // Format: name, RA (hours), Dec (degrees), magnitude
-        stars.add(new Star("Sirius", 6.7525, -16.7161, -1.46));
-        stars.add(new Star("Canopus", 6.3992, -52.6956, -0.74));
-        stars.add(new Star("Alpha Centauri", 14.6577, -60.8332, -0.27));
-        stars.add(new Star("Arcturus", 14.2612, 19.1824, -0.05));
-        stars.add(new Star("Vega", 18.6156, 38.7836, 0.03));
-        stars.add(new Star("Capella", 5.2775, 45.9994, 0.08));
-        stars.add(new Star("Rigel", 5.2422, -8.2017, 0.13));
-        stars.add(new Star("Procyon", 7.6551, 5.2250, 0.34));
-        stars.add(new Star("Achernar", 1.6285, -57.2367, 0.46));
-        stars.add(new Star("Betelgeuse", 5.9195, 7.4071, 0.50));
-        stars.add(new Star("Hadar", 14.0637, -60.3726, 0.61));
-        stars.add(new Star("Altair", 19.8465, 8.8683, 0.76));
-        stars.add(new Star("Aldebaran", 4.5987, 16.5093, 0.87));
-        stars.add(new Star("Spica", 13.4199, -11.1613, 1.04));
-        stars.add(new Star("Antares", 16.4901, -26.4319, 1.09));
-        stars.add(new Star("Pollux", 7.7553, 28.0262, 1.14));
-        stars.add(new Star("Fomalhaut", 22.9608, -29.6222, 1.16));
-        stars.add(new Star("Deneb", 20.6905, 45.2803, 1.25));
-        stars.add(new Star("Regulus", 10.1395, 11.9672, 1.36));
-        stars.add(new Star("Castor", 7.5768, 31.8882, 1.58));
+        loadStarsFromFile("stars.json");
+    }
+
+    /**
+     * Loads star data from the JSON file
+     *
+     * @param filename The name of the file to read
+     */
+    private static void loadStarsFromFile(String filename) {
+        try {
+            // Read the JSON file from assets
+            StringBuilder jsonString = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    MyApplication.getContext().getAssets().open(filename)))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    totalLineCount++;
+                    jsonString.append(line);
+                }
+            }
+
+            // Parse JSON using Gson
+            Gson gson = new Gson();
+            Type starListType = new TypeToken<List<StarJson>>(){}.getType();
+            List<StarJson> starJsonList = gson.fromJson(jsonString.toString(), starListType);
+
+            // Convert StarJson objects to Star objects
+            for (StarJson starJson : starJsonList) {
+                Star star = new Star(
+                        starJson.Name,
+                        starJson.Ra,  // RA is already in hours in the JSON
+                        starJson.Dec,
+                        0  // Magnitude not provided in the file
+                );
+                stars.add(star);
+            }
+
+            isDataLoaded = true;
+            System.out.println("Read " + totalLineCount + " lines, loaded " + stars.size() + " stars.");
+        } catch (IOException e) {
+            System.err.println("Error reading star data file: " + e.getMessage());
+            e.printStackTrace();
+            isDataLoaded = false;
+        } catch (Exception e) {
+            System.err.println("Error parsing JSON: " + e.getMessage());
+            e.printStackTrace();
+            isDataLoaded = false;
+        }
+    }
+
+    /**
+     * Helper class for JSON deserialization
+     */
+    private static class StarJson {
+        public double Ra;
+        public double Dec;
+        public String Name;
+    }
+
+    public static int getLoadedStarCount() {
+        return stars.size();
+    }
+
+    public static boolean isStarDataLoaded() {
+        return isDataLoaded;
     }
 
     /**
@@ -47,35 +97,24 @@ public class StarDatabase {
     public static List<Star> getStarsInFieldOfView(double centerRA, double centerDec,
                                                    double fovWidth, double fovHeight,
                                                    double maxMagnitude) {
+        // Existing implementation remains the same
         List<Star> visibleStars = new ArrayList<>();
 
-        // Convert FOV from degrees to hours for RA
         double fovWidthHours = fovWidth / 15.0;
-
-        // Define search boundaries
         double minRA = centerRA - (fovWidthHours / 2.0);
         double maxRA = centerRA + (fovWidthHours / 2.0);
         double minDec = centerDec - (fovHeight / 2.0);
         double maxDec = centerDec + (fovHeight / 2.0);
 
-        // Handle RA wrap around
         boolean raWraps = minRA < 0 || maxRA >= 24;
 
         for (Star star : stars) {
-            // Check magnitude first (brightness filter)
-            if (star.magnitude > maxMagnitude) {
-                continue;
-            }
-
-            // Check if star is in declination range
             if (star.declination < minDec || star.declination > maxDec) {
                 continue;
             }
 
-            // Check if star is in right ascension range
             boolean inRARange;
             if (raWraps) {
-                // Handle case where field of view crosses 0/24h boundary
                 minRA = (minRA + 24) % 24;
                 maxRA = (maxRA + 24) % 24;
 

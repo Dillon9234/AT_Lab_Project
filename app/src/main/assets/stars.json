@@ -1,0 +1,322 @@
+[
+  {
+    "Ra": 6.75,
+    "Dec": -16.71,
+    "Name": "sirius"
+  },
+  {
+    "Ra": 6.4,
+    "Dec": -52.7,
+    "Name": "canopus"
+  },
+  {
+    "Ra": 14.260000666666667,
+    "Dec": 19.19,
+    "Name": "arcturus"
+  },
+  {
+    "Ra": 14.66,
+    "Dec": -60.84,
+    "Name": "rigil_kentaurus_a"
+  },
+  {
+    "Ra": 18.620001333333335,
+    "Dec": 38.78,
+    "Name": "vega"
+  },
+  {
+    "Ra": 5.239999999999999,
+    "Dec": -8.2,
+    "Name": "rigel"
+  },
+  {
+    "Ra": 7.659999600000001,
+    "Dec": 5.23,
+    "Name": "procyon"
+  },
+  {
+    "Ra": 5.92,
+    "Dec": 7.41,
+    "Name": "betelgeuse"
+  },
+  {
+    "Ra": 1.63,
+    "Dec": -57.24,
+    "Name": "achernar"
+  },
+  {
+    "Ra": 14.060000666666667,
+    "Dec": -60.37,
+    "Name": "hadar"
+  },
+  {
+    "Ra": 5.280000333333334,
+    "Dec": 46.0,
+    "Name": "capella"
+  },
+  {
+    "Ra": 19.85,
+    "Dec": 8.87,
+    "Name": "altair"
+  },
+  {
+    "Ra": 12.439999333333333,
+    "Dec": -63.1,
+    "Name": "acrux"
+  },
+  {
+    "Ra": 4.6,
+    "Dec": 16.51,
+    "Name": "aldebaran"
+  },
+  {
+    "Ra": 13.42,
+    "Dec": -11.16,
+    "Name": "spica"
+  },
+  {
+    "Ra": 16.489999333333333,
+    "Dec": -26.43,
+    "Name": "antares"
+  },
+  {
+    "Ra": 7.760000000000001,
+    "Dec": 28.03,
+    "Name": "pollux"
+  },
+  {
+    "Ra": 22.959999999999997,
+    "Dec": -29.62,
+    "Name": "fomalhaut"
+  },
+  {
+    "Ra": 20.69,
+    "Dec": 45.28,
+    "Name": "deneb"
+  },
+  {
+    "Ra": 10.139999999999999,
+    "Dec": 11.97,
+    "Name": "regulus"
+  },
+  {
+    "Ra": 6.98,
+    "Dec": -28.97,
+    "Name": "adhara"
+  },
+  {
+    "Ra": 17.56,
+    "Dec": -37.1,
+    "Name": "shaula"
+  },
+  {
+    "Ra": 5.4399999999999995,
+    "Dec": 28.61,
+    "Name": "alnath"
+  },
+  {
+    "Ra": 5.6,
+    "Dec": -1.2,
+    "Name": "alnilam"
+  },
+  {
+    "Ra": 22.139998666666667,
+    "Dec": -46.96,
+    "Name": "alnair"
+  },
+  {
+    "Ra": 12.9,
+    "Dec": 55.96,
+    "Name": "alioth"
+  },
+  {
+    "Ra": 3.4099999999999997,
+    "Dec": 49.86,
+    "Name": "mirphak"
+  },
+  {
+    "Ra": 18.4,
+    "Dec": -34.38,
+    "Name": "kaus_australis"
+  },
+  {
+    "Ra": 11.060000666666667,
+    "Dec": 61.75,
+    "Name": "dubhe"
+  },
+  {
+    "Ra": 13.79,
+    "Dec": 49.31,
+    "Name": "alkaid"
+  },
+  {
+    "Ra": 6.630000333333333,
+    "Dec": 16.4,
+    "Name": "alhena"
+  },
+  {
+    "Ra": 7.58,
+    "Dec": 31.89,
+    "Name": "castor"
+  },
+  {
+    "Ra": 2.5300000000000002,
+    "Dec": 89.26,
+    "Name": "polaris"
+  },
+  {
+    "Ra": 9.46,
+    "Dec": -8.66,
+    "Name": "alphard"
+  },
+  {
+    "Ra": 2.12,
+    "Dec": 23.46,
+    "Name": "hamal"
+  },
+  {
+    "Ra": 10.33,
+    "Dec": 19.84,
+    "Name": "algieba"
+  },
+  {
+    "Ra": 0.7300000666666667,
+    "Dec": -17.99,
+    "Name": "diphda"
+  },
+  {
+    "Ra": 18.92,
+    "Dec": -26.3,
+    "Name": "nunki"
+  },
+  {
+    "Ra": 1.16,
+    "Dec": 35.62,
+    "Name": "mirach"
+  },
+  {
+    "Ra": 0.14,
+    "Dec": 29.09,
+    "Name": "alpheratz"
+  },
+  {
+    "Ra": 5.8,
+    "Dec": -9.67,
+    "Name": "saiph"
+  },
+  {
+    "Ra": 14.85,
+    "Dec": 74.16,
+    "Name": "kochab"
+  },
+  {
+    "Ra": 17.58,
+    "Dec": 12.56,
+    "Name": "rasalhague"
+  },
+  {
+    "Ra": 3.1400001333333334,
+    "Dec": 40.96,
+    "Name": "algol"
+  },
+  {
+    "Ra": 11.819999333333334,
+    "Dec": 14.57,
+    "Name": "denebola"
+  },
+  {
+    "Ra": 15.58,
+    "Dec": 26.71,
+    "Name": "alphekka"
+  },
+  {
+    "Ra": 17.94,
+    "Dec": 51.49,
+    "Name": "etamin"
+  },
+  {
+    "Ra": 0.6799999999999999,
+    "Dec": 56.54,
+    "Name": "shedir"
+  },
+  {
+    "Ra": 0.15,
+    "Dec": 59.15,
+    "Name": "caph"
+  },
+  {
+    "Ra": 14.75,
+    "Dec": 27.07,
+    "Name": "izar"
+  },
+  {
+    "Ra": 11.03,
+    "Dec": 56.38,
+    "Name": "merak"
+  },
+  {
+    "Ra": 21.740000000000002,
+    "Dec": 9.88,
+    "Name": "enif"
+  },
+  {
+    "Ra": 0.44,
+    "Dec": -42.31,
+    "Name": "ankaa"
+  },
+  {
+    "Ra": 11.9,
+    "Dec": 53.69,
+    "Name": "phad"
+  },
+  {
+    "Ra": 21.31,
+    "Dec": 62.59,
+    "Name": "alderamin"
+  },
+  {
+    "Ra": 23.06,
+    "Dec": 28.08,
+    "Name": "scheat"
+  },
+  {
+    "Ra": 23.08,
+    "Dec": 15.21,
+    "Name": "markab"
+  },
+  {
+    "Ra": 3.04,
+    "Dec": 4.09,
+    "Name": "menkar"
+  },
+  {
+    "Ra": 5.55,
+    "Dec": -17.82,
+    "Name": "arneb"
+  },
+  {
+    "Ra": 15.739999333333333,
+    "Dec": 6.43,
+    "Name": "unukalhai"
+  },
+  {
+    "Ra": 0.22,
+    "Dec": 15.18,
+    "Name": "algenib"
+  },
+  {
+    "Ra": 13.04,
+    "Dec": 10.96,
+    "Name": "vindemiatrix"
+  },
+  {
+    "Ra": 3.79,
+    "Dec": 24.11,
+    "Name": "alcyone"
+  },
+  {
+    "Ra": 18.740000000000002,
+    "Dec": 39.67,
+    "Name": "e_lyrae"
+  }
+]
