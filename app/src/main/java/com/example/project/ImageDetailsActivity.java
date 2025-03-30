@@ -13,7 +13,9 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -52,6 +54,10 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private double altitude;
     private Bitmap originalBitmap;
     private Bitmap starMapBitmap;
+    private ProgressBar progressBar;
+    private CheckBox detectPlanetsCheckBox;
+    private boolean starsDetected = false;
+    private StringBuilder allCelestialInfo = new StringBuilder();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,6 +69,26 @@ public class ImageDetailsActivity extends AppCompatActivity {
         detectButton = findViewById(R.id.detectButton);
         resultImageView = findViewById(R.id.resultImageView);
         detectedBodiesTextView = findViewById(R.id.detectedBodiesTextView);
+        progressBar = findViewById(R.id.progressBar);
+        detectPlanetsCheckBox = findViewById(R.id.detectPlanetsCheckBox);
+
+        detectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Reset state
+                starsDetected = false;
+                allCelestialInfo = new StringBuilder();
+
+                // Show loading state
+                progressBar.setVisibility(View.VISIBLE);
+                detectButton.setEnabled(false);
+                detectPlanetsCheckBox.setEnabled(false);
+                resultImageView.setVisibility(View.GONE);
+                detectedBodiesTextView.setVisibility(View.GONE);
+
+                detectCelestialBodies();
+            }
+        });
 
         try {
             // Get data from intent
@@ -118,14 +144,6 @@ public class ImageDetailsActivity extends AppCompatActivity {
                 );
                 detailDataTextView.setText(data);
                 Log.d(TAG, "Data loaded successfully");
-
-                // Set up detect button
-                detectButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        detectCelestialBodies();
-                    }
-                });
             } else {
                 Log.e(TAG, "Intent or extras are null");
                 Toast.makeText(this, "No data provided", Toast.LENGTH_SHORT).show();
@@ -199,14 +217,18 @@ public class ImageDetailsActivity extends AppCompatActivity {
             // First, detect stars using the existing system
             detectStarsUsingLocalDatabase(canvas);
 
-            // Then, detect planets, Sun, and Moon using the API
-            detectPlanetsSunMoonUsingApi(canvas);
-
-            // Note: We'll no longer display or save the image here
+            // Then, if checkbox is checked, detect planets, Sun, and Moon using the API
+            if (detectPlanetsCheckBox.isChecked()) {
+                detectPlanetsSunMoonUsingApi(canvas);
+            } else {
+                // If not detecting planets, complete the process now
+                finishDetection();
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error identifying celestial bodies", e);
             Toast.makeText(this, "Error identifying celestial bodies: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();
+            hideLoadingState();
         }
     }
 
@@ -215,6 +237,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
             if (!StarDatabase.isStarDataLoaded()) {
                 Toast.makeText(this, "Star database not loaded. Please try again later.",
                         Toast.LENGTH_LONG).show();
+                hideLoadingState();
                 return;
             }
 
@@ -250,7 +273,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
                     fovDegrees, fovDegrees * height / width, 4.0);
 
             // Build a string with star information
-            StringBuilder starInfo = new StringBuilder("Stars in view:\n");
+            allCelestialInfo.append("Stars in view:\n");
 
             // For each star, find its pixel position and mark it
             for (StarDatabase.Star star : visibleStars) {
@@ -262,18 +285,22 @@ public class ImageDetailsActivity extends AppCompatActivity {
 
                     canvas.drawCircle((float)pixelCoords[0], (float)pixelCoords[1], 20, starPaint);
                     canvas.drawText(star.name, (float)pixelCoords[0] - 10, (float)pixelCoords[1] - 25, textPaint);
-                    starInfo.append(star.name).append("\n");
+                    allCelestialInfo.append(star.name).append("\n");
                 }
             }
 
-            // Update the text view with star information
-            detectedBodiesTextView.setText(starInfo.toString());
-            detectedBodiesTextView.setVisibility(View.VISIBLE);
+            starsDetected = true;
+
+            // If not detecting planets, finish the process
+            if (!detectPlanetsCheckBox.isChecked()) {
+                finishDetection();
+            }
 
         } catch (Exception e) {
             Log.e(TAG, "Error identifying stars", e);
             Toast.makeText(this, "Error identifying stars: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();
+            hideLoadingState();
         }
     }
 
@@ -301,6 +328,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
                                 response.errorBody().toString() : "Unknown error");
                         Log.e(TAG, errorMsg);
                         Toast.makeText(ImageDetailsActivity.this, errorMsg, Toast.LENGTH_LONG).show();
+                        finishDetection();
                     }
                 }
 
@@ -309,6 +337,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
                     Log.e(TAG, "API call failed", t);
                     Toast.makeText(ImageDetailsActivity.this,
                             "Failed to get celestial data: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                    finishDetection();
                 }
             });
 
@@ -316,6 +345,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
             Log.e(TAG, "Error identifying celestial bodies", e);
             Toast.makeText(this, "Error identifying celestial bodies: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();
+            hideLoadingState();
         }
     }
 
@@ -356,8 +386,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
                 width, height, centerCoords, fovDegrees);
 
         // Append to the existing text
-        StringBuilder planetInfo = new StringBuilder(detectedBodiesTextView.getText());
-        planetInfo.append("\n\nPlanets, Sun & Moon:\n");
+        allCelestialInfo.append("\nPlanets, Sun & Moon:\n");
 
         // Draw each celestial body on the image
         for (Map.Entry<String, CelestialResponse.CelestialBodyPosition> entry : bodies.entrySet()) {
@@ -395,20 +424,37 @@ public class ImageDetailsActivity extends AppCompatActivity {
                         (float)pixelCoords[0] - 15, (float)pixelCoords[1] - radius - 10, textPaint);
 
                 // Add to info text
-                planetInfo.append(bodyName.toUpperCase()).append("\n");
+                allCelestialInfo.append(bodyName).append("\n");
             }
         }
 
+        // Complete the detection process
+        finishDetection();
+    }
+
+    private void finishDetection() {
         // Update the image and text view
         runOnUiThread(() -> {
             resultImageView.setImageBitmap(starMapBitmap);
             resultImageView.setVisibility(View.VISIBLE);
-            detectedBodiesTextView.setText(planetInfo.toString());
-            Toast.makeText(ImageDetailsActivity.this,
-                    "Celestial bodies identified successfully", Toast.LENGTH_SHORT).show();
+            detectedBodiesTextView.setText(allCelestialInfo.toString());
+            detectedBodiesTextView.setVisibility(View.VISIBLE);
+
+            String message = starsDetected ? "Celestial bodies identified successfully" : "No celestial bodies detected";
+            Toast.makeText(ImageDetailsActivity.this, message, Toast.LENGTH_SHORT).show();
+
+            hideLoadingState();
         });
 
         // Save the updated image
         saveImageToGallery(starMapBitmap);
+    }
+
+    private void hideLoadingState() {
+        runOnUiThread(() -> {
+            progressBar.setVisibility(View.GONE);
+            detectButton.setEnabled(true);
+            detectPlanetsCheckBox.setEnabled(true);
+        });
     }
 }
