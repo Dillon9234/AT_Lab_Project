@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -44,7 +45,6 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private TextView detectedBodiesTextView;
 
     private Uri imageUri;
-    // Replace roll, pitch, yaw with quaternion components
     private float quaternionX;
     private float quaternionY;
     private float quaternionZ;
@@ -56,6 +56,8 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private Bitmap starMapBitmap;
     private ProgressBar progressBar;
     private CheckBox detectPlanetsCheckBox;
+    private EditText serverUrlEditText;
+    private View serverUrlContainer;
     private boolean starsDetected = false;
     private StringBuilder allCelestialInfo = new StringBuilder();
     @Override
@@ -71,6 +73,19 @@ public class ImageDetailsActivity extends AppCompatActivity {
         detectedBodiesTextView = findViewById(R.id.detectedBodiesTextView);
         progressBar = findViewById(R.id.progressBar);
         detectPlanetsCheckBox = findViewById(R.id.detectPlanetsCheckBox);
+        serverUrlEditText = findViewById(R.id.serverUrlEditText);
+        serverUrlContainer = findViewById(R.id.serverUrlContainer);
+
+        // Set initial visibility based on checkbox state
+        serverUrlContainer.setVisibility(detectPlanetsCheckBox.isChecked() ? View.VISIBLE : View.GONE);
+
+        // Initialize server URL field with current value from ApiClient
+        serverUrlEditText.setText(ApiClient.getBaseUrl(this));
+
+        // Add checkbox listener to toggle URL input visibility
+        detectPlanetsCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            serverUrlContainer.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
 
         detectButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -83,8 +98,18 @@ public class ImageDetailsActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.VISIBLE);
                 detectButton.setEnabled(false);
                 detectPlanetsCheckBox.setEnabled(false);
+                serverUrlContainer.setEnabled(false);
+                serverUrlEditText.setEnabled(false);
                 resultImageView.setVisibility(View.GONE);
                 detectedBodiesTextView.setVisibility(View.GONE);
+
+                // Save the server URL if planets detection is enabled
+                if (detectPlanetsCheckBox.isChecked()) {
+                    String serverUrl = serverUrlEditText.getText().toString().trim();
+                    if (!serverUrl.isEmpty()) {
+                        ApiClient.setBaseUrl(ImageDetailsActivity.this, serverUrl);
+                    }
+                }
 
                 detectCelestialBodies();
             }
@@ -318,6 +343,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
 
             // Call API
             CelestialApiService apiService = ApiClient.getCelestialApiService(this);
+            ApiClient.setBaseUrl(this,"http://192.168.0.102:5000");
             apiService.getCelestialCoordinates(request).enqueue(new retrofit2.Callback<CelestialResponse>() {
                 @Override
                 public void onResponse(retrofit2.Call<CelestialResponse> call, retrofit2.Response<CelestialResponse> response) {
@@ -455,6 +481,8 @@ public class ImageDetailsActivity extends AppCompatActivity {
             progressBar.setVisibility(View.GONE);
             detectButton.setEnabled(true);
             detectPlanetsCheckBox.setEnabled(true);
+            serverUrlContainer.setEnabled(true);
+            serverUrlEditText.setEnabled(true);
         });
     }
 }

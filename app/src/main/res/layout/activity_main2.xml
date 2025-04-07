@@ -42,6 +42,35 @@
             android:checked="true"
             android:layout_marginBottom="8dp" />
 
+        <!-- Server URL Input - Initially hidden -->
+        <LinearLayout
+            android:id="@+id/serverUrlContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp"
+            android:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Server URL:"
+                android:textColor="@color/white"
+                android:layout_marginEnd="8dp"
+                android:layout_gravity="center_vertical" />
+
+            <EditText
+                android:id="@+id/serverUrlEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/white"
+                android:textColorHint="#80FFFFFF"
+                android:hint="http://192.168.0.102:5000"
+                android:inputType="textUri"
+                android:singleLine="true" />
+        </LinearLayout>
+
         <!-- Detection Button -->
         <Button
             android:id="@+id/detectButton"

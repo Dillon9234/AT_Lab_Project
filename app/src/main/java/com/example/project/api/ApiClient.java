@@ -12,7 +12,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
     private static final String TAG = "ApiClient";
-    private static final String DEFAULT_URL = "http://192.168.0.104:5000";
+    private static final String DEFAULT_URL = "http://192.168.0.102:5000";
     private static final String PREFS_NAME = "ApiPrefs";
     private static final String BASE_URL_KEY = "base_url";
 
