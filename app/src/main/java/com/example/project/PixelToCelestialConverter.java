@@ -12,7 +12,6 @@ public class PixelToCelestialConverter {
     private final double cd1_2;
     private final double cd2_1;
     private final double cd2_2;
-    private final double aspectRatio; // Image aspect ratio
     private final double fovDegrees; // Field of view in degrees
 
     /**
@@ -33,7 +32,8 @@ public class PixelToCelestialConverter {
         this.crpix2 = imageHeight / 2.0;
 
         // Calculate aspect ratio
-        this.aspectRatio = (double) imageWidth / imageHeight;
+        // Image aspect ratio
+        double aspectRatio = (double) imageWidth / imageHeight;
 
         // Set reference values to the center coordinates (convert RA from hours to degrees)
         this.crval1 = centerCoordinates.rightAscension * 15.0; // Convert hours to degrees
@@ -81,7 +81,6 @@ public class PixelToCelestialConverter {
             return new double[] {Double.NaN, Double.NaN};
         }
 
-        // For wider FOV (66 degrees), stereographic projection works better than gnomonic
         // Stereographic projection formula
         double x_standard = 2 * Math.cos(dec_rad) * Math.sin(ra_rad - ra0_rad) /
                 (1 + Math.sin(dec_rad) * Math.sin(dec0_rad) + Math.cos(dec_rad) * Math.cos(dec0_rad) * Math.cos(ra_rad - ra0_rad));

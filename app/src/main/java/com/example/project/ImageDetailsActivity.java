@@ -26,20 +26,31 @@ import com.example.project.api.CelestialApiService;
 import com.example.project.api.CelestialRequest;
 import com.example.project.api.CelestialResponse;
 
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfDouble;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class ImageDetailsActivity extends AppCompatActivity {
     private static final String TAG = "ImageDetailsActivity";
-    private ImageView detailImageView;
-    private TextView detailDataTextView;
     private Button detectButton;
     private ImageView resultImageView;
     private TextView detectedBodiesTextView;
@@ -60,14 +71,21 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private View serverUrlContainer;
     private boolean starsDetected = false;
     private StringBuilder allCelestialInfo = new StringBuilder();
+    static {
+        if (!org.opencv.android.OpenCVLoader.initDebug()) {
+            Log.e(TAG, "OpenCV initialization failed");
+        } else {
+            Log.d(TAG, "OpenCV initialized successfully");
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
 
         // Initialize views
-        detailImageView = findViewById(R.id.detailImageView);
-        detailDataTextView = findViewById(R.id.detailDataTextView);
+        ImageView detailImageView = findViewById(R.id.detailImageView);
+        TextView detailDataTextView = findViewById(R.id.detailDataTextView);
         detectButton = findViewById(R.id.detectButton);
         resultImageView = findViewById(R.id.resultImageView);
         detectedBodiesTextView = findViewById(R.id.detectedBodiesTextView);
@@ -195,6 +213,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
                 Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                 if (uri != null) {
                     try (OutputStream outputStream = getContentResolver().openOutputStream(uri)) {
+                        assert outputStream != null;
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
                         Toast.makeText(this, "Image saved to gallery", Toast.LENGTH_SHORT).show();
                     }
@@ -236,7 +255,7 @@ public class ImageDetailsActivity extends AppCompatActivity {
             originalBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
 
             // Create a copy of the bitmap to draw on
-            starMapBitmap = originalBitmap.copy(originalBitmap.getConfig(), true);
+            starMapBitmap = originalBitmap.copy(Objects.requireNonNull(originalBitmap.getConfig()), true);
             Canvas canvas = new Canvas(starMapBitmap);
 
             // First, detect stars using the existing system
@@ -245,10 +264,8 @@ public class ImageDetailsActivity extends AppCompatActivity {
             // Then, if checkbox is checked, detect planets, Sun, and Moon using the API
             if (detectPlanetsCheckBox.isChecked()) {
                 detectPlanetsSunMoonUsingApi(canvas);
-            } else {
-                // If not detecting planets, complete the process now
-                finishDetection();
             }
+            finishDetection();
         } catch (Exception e) {
             Log.e(TAG, "Error identifying celestial bodies", e);
             Toast.makeText(this, "Error identifying celestial bodies: " + e.getMessage(),
@@ -314,12 +331,14 @@ public class ImageDetailsActivity extends AppCompatActivity {
                 }
             }
 
-            starsDetected = true;
-
-            // If not detecting planets, finish the process
-            if (!detectPlanetsCheckBox.isChecked()) {
-                finishDetection();
+            List<CelestialBody> allBodies = new ArrayList<>();
+            for (StarDatabase.Star star : visibleStars) {
+                allBodies.add(new CelestialBody(star.name, star.rightAscension, star.declination, CelestialBodyType.STAR));
             }
+
+            matchAndDrawStars(allBodies, canvas);
+
+            starsDetected = true;
 
         } catch (Exception e) {
             Log.e(TAG, "Error identifying stars", e);
@@ -354,7 +373,6 @@ public class ImageDetailsActivity extends AppCompatActivity {
                                 response.errorBody().toString() : "Unknown error");
                         Log.e(TAG, errorMsg);
                         Toast.makeText(ImageDetailsActivity.this, errorMsg, Toast.LENGTH_LONG).show();
-                        finishDetection();
                     }
                 }
 
@@ -363,7 +381,6 @@ public class ImageDetailsActivity extends AppCompatActivity {
                     Log.e(TAG, "API call failed", t);
                     Toast.makeText(ImageDetailsActivity.this,
                             "Failed to get celestial data: " + t.getMessage(), Toast.LENGTH_LONG).show();
-                    finishDetection();
                 }
             });
 
@@ -378,26 +395,6 @@ public class ImageDetailsActivity extends AppCompatActivity {
     private void processCelestialData(CelestialResponse celestialData, Canvas canvas) {
         Map<String, CelestialResponse.CelestialBodyPosition> bodies = celestialData.getCelestialBodies();
 
-        // Create paints for different celestial bodies
-        Paint sunPaint = new Paint();
-        sunPaint.setColor(Color.YELLOW);
-        sunPaint.setStyle(Paint.Style.STROKE);
-        sunPaint.setStrokeWidth(3);
-
-        Paint moonPaint = new Paint();
-        moonPaint.setColor(Color.WHITE);
-        moonPaint.setStyle(Paint.Style.STROKE);
-        moonPaint.setStrokeWidth(3);
-
-        Paint planetPaint = new Paint();
-        planetPaint.setColor(Color.RED);
-        planetPaint.setStyle(Paint.Style.STROKE);
-        planetPaint.setStrokeWidth(2);
-
-        Paint textPaint = new Paint();
-        textPaint.setColor(Color.CYAN);
-        textPaint.setTextSize(24);
-
         // Get the celestial coordinates at the center of the image from quaternion
         AstronomicalCalculator.CelestialCoordinates centerCoords =
                 AstronomicalCalculator.calculateCoordinatesFromQuaternion(
@@ -411,68 +408,121 @@ public class ImageDetailsActivity extends AppCompatActivity {
         PixelToCelestialConverter converter = new PixelToCelestialConverter(
                 width, height, centerCoords, fovDegrees);
 
-        // Append to the existing text
-        allCelestialInfo.append("\nPlanets, Sun & Moon:\n");
+        // Get stars that should be visible in this field of view
+        List<StarDatabase.Star> visibleStars = StarDatabase.getStarsInFieldOfView(
+                centerCoords.rightAscension, centerCoords.declination,
+                fovDegrees, fovDegrees * height / width, 4.0);
 
-        // Draw each celestial body on the image
+        // Combine all celestial bodies (stars and planets/sun/moon)
+        List<CelestialBody> allBodies = new ArrayList<>();
+
+        // Add stars
+        for (StarDatabase.Star star : visibleStars) {
+            allBodies.add(new CelestialBody(star.name, star.rightAscension, star.declination, CelestialBodyType.STAR));
+        }
+
+        // Add planets, sun, and moon
         for (Map.Entry<String, CelestialResponse.CelestialBodyPosition> entry : bodies.entrySet()) {
             String bodyName = entry.getKey();
             CelestialResponse.CelestialBodyPosition position = entry.getValue();
+            CelestialBodyType type = "sun".equals(bodyName) ? CelestialBodyType.SUN :
+                    "moon".equals(bodyName) ? CelestialBodyType.MOON :
+                            CelestialBodyType.PLANET;
+            allBodies.add(new CelestialBody(bodyName, position.ra.getHours(), position.dec.getDegrees(), type));
+        }
 
-            // Convert RA/Dec to pixel coordinates
-            double[] pixelCoords = converter.celestialToPixel(
-                    position.ra.getHours(), position.dec.getDegrees());
+        matchAndDrawStars(allBodies, canvas);
+    }
 
-            if (!Double.isNaN(pixelCoords[0]) && !Double.isNaN(pixelCoords[1]) &&
-                    pixelCoords[0] >= 0 && pixelCoords[0] < width &&
-                    pixelCoords[1] >= 0 && pixelCoords[1] < height) {
+    private void matchAndDrawStars(List<CelestialBody> allBodies, Canvas canvas) {
+        Paint starPaint = new Paint();
+        starPaint.setColor(Color.GREEN);
+        starPaint.setStyle(Paint.Style.STROKE);
+        starPaint.setStrokeWidth(2);
 
-                Paint paint;
-                int radius;
+        Paint textPaint = new Paint();
+        textPaint.setColor(Color.CYAN);
+        textPaint.setTextSize(24);
 
-                // Choose appropriate paint and size based on body type
-                if ("sun".equals(bodyName)) {
-                    paint = sunPaint;
-                    radius = 35;
-                } else if ("moon".equals(bodyName)) {
-                    paint = moonPaint;
-                    radius = 30;
-                } else {
-                    paint = planetPaint;
-                    radius = 25;
+        Paint linePaint = new Paint();
+        linePaint.setColor(Color.WHITE);
+        linePaint.setStrokeWidth(2);
+        linePaint.setStyle(Paint.Style.STROKE);
+        linePaint.setAlpha(150);  // Semi-transparent
+
+        int width = originalBitmap.getWidth();
+        int height = originalBitmap.getHeight();
+
+        // Get the celestial coordinates at the center of the image from quaternion
+        AstronomicalCalculator.CelestialCoordinates centerCoords =
+                AstronomicalCalculator.calculateCoordinatesFromQuaternion(
+                        latitude, longitude, altitude,
+                        quaternionX, quaternionY, quaternionZ, quaternionW);
+
+        // Create the WCS converter
+        double fovDegrees = 66.0;
+        PixelToCelestialConverter converter = new PixelToCelestialConverter(
+                width, height, centerCoords, fovDegrees);
+
+        // Get actual detected stars
+        List<Point> actualStars = detectStarsInImage(originalBitmap);
+
+        // For each actual detected star, find the closest calculated celestial body
+        for (Point actualStar : actualStars) {
+            CelestialBody closestBody = null;
+            double minDistance = Double.MAX_VALUE;
+
+            for (CelestialBody body : allBodies) {
+                double[] pixelCoords = converter.celestialToPixel(body.rightAscension, body.declination);
+
+                if (!Double.isNaN(pixelCoords[0]) && !Double.isNaN(pixelCoords[1]) &&
+                        pixelCoords[0] >= 0 && pixelCoords[0] < width &&
+                        pixelCoords[1] >= 0 && pixelCoords[1] < height) {
+
+                    double distance = Math.hypot(pixelCoords[0] - actualStar.x, pixelCoords[1] - actualStar.y);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestBody = body;
+                        closestBody.pixelX = (int) pixelCoords[0];
+                        closestBody.pixelY = (int) pixelCoords[1];
+                    }
                 }
+            }
 
-                // Draw circle around the celestial body
-                canvas.drawCircle((float)pixelCoords[0], (float)pixelCoords[1], radius, paint);
+            // If a closest body was found, draw it and connect to the actual star
+            if (closestBody != null) {
+                // Draw the calculated celestial body
+                canvas.drawCircle(closestBody.pixelX, closestBody.pixelY, 20, starPaint);
+                canvas.drawText(closestBody.name, closestBody.pixelX - 10, closestBody.pixelY - 25, textPaint);
 
-                // Draw the name
-                canvas.drawText(bodyName.toUpperCase(),
-                        (float)pixelCoords[0] - 15, (float)pixelCoords[1] - radius - 10, textPaint);
+                // Draw the line connecting the actual star to the calculated position
+                canvas.drawLine((float)actualStar.x, (float)actualStar.y, closestBody.pixelX, closestBody.pixelY, linePaint);
 
-                // Add to info text
-                allCelestialInfo.append(bodyName).append("\n");
+                // Draw the actual detected star
+                canvas.drawCircle((float)actualStar.x, (float)actualStar.y, 5, starPaint);
             }
         }
 
-        // Complete the detection process
-        finishDetection();
+        updateDetectedBodiesTextView(actualStars.size());
     }
 
-    private void finishDetection() {
-        // Update the image and text view
+    private void updateDetectedBodiesTextView(int matchedStarsCount) {
+
         runOnUiThread(() -> {
+            String info = String.format("Detected %d stars in the image.\nMatched with closest calculated celestial bodies.", matchedStarsCount);
             resultImageView.setImageBitmap(starMapBitmap);
             resultImageView.setVisibility(View.VISIBLE);
-            detectedBodiesTextView.setText(allCelestialInfo.toString());
+            detectedBodiesTextView.setText(info);
             detectedBodiesTextView.setVisibility(View.VISIBLE);
-
-            String message = starsDetected ? "Celestial bodies identified successfully" : "No celestial bodies detected";
-            Toast.makeText(ImageDetailsActivity.this, message, Toast.LENGTH_SHORT).show();
-
             hideLoadingState();
         });
+    }
 
-        // Save the updated image
+
+    private void finishDetection() {
+        String message = starsDetected ? "Celestial bodies identified successfully" : "No celestial bodies detected";
+        Toast.makeText(ImageDetailsActivity.this, message, Toast.LENGTH_SHORT).show();
         saveImageToGallery(starMapBitmap);
     }
 
@@ -485,4 +535,98 @@ public class ImageDetailsActivity extends AppCompatActivity {
             serverUrlEditText.setEnabled(true);
         });
     }
+
+    private List<Point> detectStarsInImage(Bitmap bitmap) {
+        List<Point> starCentroids = new ArrayList<>();
+        Mat srcMat = new Mat();
+        Utils.bitmapToMat(bitmap, srcMat);
+
+        try {
+            // Convert to grayscale and blur
+            Mat grayMat = new Mat();
+            Imgproc.cvtColor(srcMat, grayMat, Imgproc.COLOR_RGB2GRAY);
+            Imgproc.GaussianBlur(grayMat, grayMat, new Size(3, 3), 0);
+
+            // Adaptive thresholding with MEAN_C
+            Mat thresholdMat = new Mat();
+            Imgproc.adaptiveThreshold(grayMat, thresholdMat, 255,
+                    Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 11, -10);
+
+            // Find contours
+            List<MatOfPoint> contours = new ArrayList<>();
+            Mat hierarchy = new Mat();
+            Imgproc.findContours(thresholdMat, contours, hierarchy,
+                    Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+
+            // Process contours
+            for (MatOfPoint contour : contours) {
+                // Area filter
+                double area = Imgproc.contourArea(contour);
+                if (area < 0.8 || area > 25) continue;
+
+                // Bounding rectangle checks
+                Rect rect = Imgproc.boundingRect(contour);
+                double aspectRatio = Math.max(rect.width, rect.height) /
+                        (Math.min(rect.width, rect.height) + 1e-5);
+                if (aspectRatio > 4) continue;
+
+                // Region of interest analysis
+                int margin = 5;
+                int x1 = Math.max(rect.x - margin, 0);
+                int y1 = Math.max(rect.y - margin, 0);
+                int x2 = Math.min(rect.x + rect.width + margin, grayMat.cols());
+                int y2 = Math.min(rect.y + rect.height + margin, grayMat.rows());
+                Mat roi = grayMat.submat(y1, y2, x1, x2);
+
+                // Intensity analysis
+                Scalar meanVal = Core.mean(roi);
+                MatOfDouble stdDev = new MatOfDouble();
+                Core.meanStdDev(roi, new MatOfDouble(), stdDev);
+                double maxVal = Core.minMaxLoc(roi).maxVal;
+
+                // Heuristic checks
+                if (stdDev.toArray()[0] > 10 && maxVal > 160 && meanVal.val[0] < 100) {
+                    Point center = new Point(
+                            rect.x + rect.width/2.0,
+                            rect.y + rect.height/2.0
+                    );
+
+                    // Non-maximum suppression check
+                    boolean tooClose = false;
+                    for (Point existing : starCentroids) {
+                        if (Math.hypot(center.x - existing.x, center.y - existing.y) < 8) {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+                    if (!tooClose) {
+                        starCentroids.add(center);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Star detection error", e);
+        }
+        return starCentroids;
+    }
+    private enum CelestialBodyType {
+        STAR, PLANET, SUN, MOON
+    }
+    private static class CelestialBody {
+        String name;
+        double rightAscension;
+        double declination;
+        CelestialBodyType type;
+        int pixelX;
+
+        int pixelY;
+
+        CelestialBody(String name, double rightAscension, double declination, CelestialBodyType type) {
+            this.name = name;
+            this.rightAscension = rightAscension;
+            this.declination = declination;
+            this.type = type;
+        }
+    }
 }
+
