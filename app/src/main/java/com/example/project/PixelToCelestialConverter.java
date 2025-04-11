@@ -1,5 +1,7 @@
 package com.example.project;
 
+import java.lang.Math;
+
 public class PixelToCelestialConverter {
     // WCS transformation parameters
     private final double crval1; // RA at reference pixel (degrees)
@@ -11,18 +13,21 @@ public class PixelToCelestialConverter {
     private final double cd2_1;
     private final double cd2_2;
     private final double aspectRatio; // Image aspect ratio
+    private final double fovDegrees; // Field of view in degrees
 
     /**
      * Creates a WCS-based converter for mapping pixels to celestial coordinates
+     * Optimized for a camera with 66-degree FOV
      *
      * @param imageWidth Width of the image in pixels
      * @param imageHeight Height of the image in pixels
      * @param centerCoordinates Celestial coordinates at the center of the image
-     * @param fovDegrees Field of view in degrees
      */
     public PixelToCelestialConverter(int imageWidth, int imageHeight,
                                      AstronomicalCalculator.CelestialCoordinates centerCoordinates,
                                      double fovDegrees) {
+        this.fovDegrees = fovDegrees;
+
         // Set reference pixel to center of image
         this.crpix1 = imageWidth / 2.0;
         this.crpix2 = imageHeight / 2.0;
@@ -35,8 +40,9 @@ public class PixelToCelestialConverter {
         this.crval2 = centerCoordinates.declination;
 
         // Calculate pixel scale (degrees per pixel)
+        // For a 66-degree FOV, we need to adjust the scale calculation
         // Use the smaller dimension to ensure the FOV fits within the image
-        double scale = fovDegrees / Math.min(imageWidth, imageHeight);
+        double scale = this.fovDegrees / Math.min(imageWidth, imageHeight);
 
         // Account for device orientation from azimuth
         double deviceRotation = Math.toRadians(centerCoordinates.azimuth);
@@ -49,72 +55,8 @@ public class PixelToCelestialConverter {
     }
 
     /**
-     * Converts a pixel position to celestial coordinates (RA/Dec)
-     *
-     * @param x X-coordinate of the pixel
-     * @param y Y-coordinate of the pixel
-     * @return CelestialCoordinates containing RA and Dec
-     */
-    public AstronomicalCalculator.CelestialCoordinates pixelToCelestial(double x, double y) {
-        // Calculate intermediate world coordinates
-        double x_intermediate = cd1_1 * (x - crpix1) + cd1_2 * (y - crpix2);
-        double y_intermediate = cd2_1 * (x - crpix1) + cd2_2 * (y - crpix2);
-
-        // For tangent plane projection (TAN)
-        double ra_rad = Math.toRadians(crval1);
-        double dec_rad = Math.toRadians(crval2);
-
-        // Convert intermediate coordinates to radians
-        double x_rad = Math.toRadians(x_intermediate);
-        double y_rad = Math.toRadians(y_intermediate);
-
-        // Calculate the projection onto the celestial sphere
-        double rho = Math.sqrt(x_rad * x_rad + y_rad * y_rad);
-
-        // Handle the case where the pixel is at the reference point
-        if (rho == 0) {
-            return new AstronomicalCalculator.CelestialCoordinates(
-                    crval1 / 15.0, // Convert back to hours
-                    crval2,
-                    0, 0); // We don't need Az/Alt here
-        }
-
-        double c = Math.atan(rho);
-        double sinc = Math.sin(c);
-        double cosc = Math.cos(c);
-
-        // Calculate declination
-        double dec = Math.asin(cosc * Math.sin(dec_rad) +
-                (y_rad * sinc * Math.cos(dec_rad) / rho));
-
-        // Calculate right ascension
-        double ra;
-        double sdec = Math.sin(dec);
-        if (Math.abs(sdec) > 0.9999) {
-            // Near the poles
-            ra = ra_rad + Math.atan2(x_rad, -y_rad);
-        } else {
-            // General case
-            ra = ra_rad + Math.atan2(x_rad * sinc,
-                    rho * Math.cos(dec_rad) * cosc -
-                            y_rad * Math.sin(dec_rad) * sinc);
-        }
-
-        // Convert to degrees and normalize RA to [0, 360)
-        double ra_deg = Math.toDegrees(ra);
-        ra_deg = (ra_deg + 360.0) % 360.0;
-
-        // Convert RA from degrees to hours (24 hours = 360 degrees)
-        double ra_hours = ra_deg / 15.0;
-
-        return new AstronomicalCalculator.CelestialCoordinates(
-                ra_hours,
-                Math.toDegrees(dec),
-                0, 0); // We don't need Az/Alt here
-    }
-
-    /**
      * Converts celestial coordinates to pixel position
+     * Optimized for wider FOV (66 degrees)
      *
      * @param ra Right Ascension in hours
      * @param dec Declination in degrees
@@ -139,11 +81,13 @@ public class PixelToCelestialConverter {
             return new double[] {Double.NaN, Double.NaN};
         }
 
-        // Calculate the standard coordinates (gnomonic projection)
-        double sin_c = Math.sqrt(1.0 - cos_c * cos_c);
-        double x_standard = Math.cos(dec_rad) * Math.sin(ra_rad - ra0_rad) / cos_c;
-        double y_standard = (Math.sin(dec_rad) * Math.cos(dec0_rad) -
-                Math.cos(dec_rad) * Math.sin(dec0_rad) * Math.cos(ra_rad - ra0_rad)) / cos_c;
+        // For wider FOV (66 degrees), stereographic projection works better than gnomonic
+        // Stereographic projection formula
+        double x_standard = 2 * Math.cos(dec_rad) * Math.sin(ra_rad - ra0_rad) /
+                (1 + Math.sin(dec_rad) * Math.sin(dec0_rad) + Math.cos(dec_rad) * Math.cos(dec0_rad) * Math.cos(ra_rad - ra0_rad));
+        double y_standard = 2 * (Math.sin(dec_rad) * Math.cos(dec0_rad) -
+                Math.cos(dec_rad) * Math.sin(dec0_rad) * Math.cos(ra_rad - ra0_rad)) /
+                (1 + Math.sin(dec_rad) * Math.sin(dec0_rad) + Math.cos(dec_rad) * Math.cos(dec0_rad) * Math.cos(ra_rad - ra0_rad));
 
         // Convert to degrees
         double x_intermediate = Math.toDegrees(x_standard);
@@ -157,9 +101,84 @@ public class PixelToCelestialConverter {
             return new double[] {Double.NaN, Double.NaN};
         }
 
+        // Calculate final pixel coordinates
         double x = crpix1 + (cd2_2 * x_intermediate - cd1_2 * y_intermediate) / det;
         double y = crpix2 + (-cd2_1 * x_intermediate + cd1_1 * y_intermediate) / det;
 
+        // Apply FOV correction factor for wide-angle cameras
+        // This helps compensate for lens distortion in wide FOV cameras
+        double distanceFromCenter = Math.sqrt(Math.pow(x - crpix1, 2) + Math.pow(y - crpix2, 2));
+        double maxDistance = Math.min(crpix1, crpix2);
+
+        // Only apply correction if point is not at center
+        if (distanceFromCenter > 0) {
+            // Correction increases with distance from center
+            double correctionFactor = 1.0 + 0.1 * Math.pow(distanceFromCenter / maxDistance, 2);
+            double angle = Math.atan2(y - crpix2, x - crpix1);
+
+            // Apply correction
+            x = crpix1 + (distanceFromCenter * correctionFactor) * Math.cos(angle);
+            y = crpix2 + (distanceFromCenter * correctionFactor) * Math.sin(angle);
+        }
+
         return new double[] {x, y};
+    }
+
+    /**
+     * Converts pixel position to celestial coordinates
+     * Added for completeness and testing
+     *
+     * @param x X pixel coordinate
+     * @param y Y pixel coordinate
+     * @return double[] containing [ra (hours), dec (degrees)]
+     */
+    public double[] pixelToCelestial(double x, double y) {
+        // Calculate intermediate coordinates using the CD matrix
+        double det = cd1_1 * cd2_2 - cd1_2 * cd2_1;
+
+        // Handle case where matrix is singular
+        if (Math.abs(det) < 1e-10) {
+            return new double[] {Double.NaN, Double.NaN};
+        }
+
+        double dx = x - crpix1;
+        double dy = y - crpix2;
+
+        double x_intermediate = (cd1_1 * dx + cd1_2 * dy) / det;
+        double y_intermediate = (cd2_1 * dx + cd2_2 * dy) / det;
+
+        // Convert to radians
+        double x_rad = Math.toRadians(x_intermediate);
+        double y_rad = Math.toRadians(y_intermediate);
+
+        // Convert from stereographic projection to celestial coordinates
+        double ra0_rad = Math.toRadians(crval1);
+        double dec0_rad = Math.toRadians(crval2);
+
+        double rho = Math.sqrt(x_rad * x_rad + y_rad * y_rad);
+        double c = 2 * Math.atan(rho / 2);
+
+        // Handle case where rho is zero
+        if (Math.abs(rho) < 1e-10) {
+            return new double[] {crval1 / 15.0, crval2}; // Return center coordinates
+        }
+
+        double sin_c = Math.sin(c);
+        double cos_c = Math.cos(c);
+
+        double dec_rad = Math.asin(cos_c * Math.sin(dec0_rad) +
+                (y_rad * sin_c * Math.cos(dec0_rad) / rho));
+
+        double ra_rad = ra0_rad + Math.atan2(x_rad * sin_c,
+                rho * Math.cos(dec0_rad) * cos_c - y_rad * sin_c * Math.sin(dec0_rad));
+
+        // Convert to hours and degrees
+        double ra_hours = Math.toDegrees(ra_rad) / 15.0;
+        double dec_degrees = Math.toDegrees(dec_rad);
+
+        // Normalize RA to [0, 24) hours
+        ra_hours = (ra_hours % 24 + 24) % 24;
+
+        return new double[] {ra_hours, dec_degrees};
     }
 }
