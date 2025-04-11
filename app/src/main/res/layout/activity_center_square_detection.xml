@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:context=".CenterSquareDetectionActivity">
+
+    <ImageView
+        android:id="@+id/centerSquareImageView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_alignParentTop="true"
+        android:layout_above="@+id/detectedBodyTextView"
+        android:layout_marginBottom="16dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="Image with center square" />
+
+    <TextView
+        android:id="@+id/detectedBodyTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/detectPlanetsCheckBox"
+        android:layout_marginBottom="16dp"
+        android:background="#80000000"
+        android:padding="8dp"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <CheckBox
+        android:id="@+id/detectPlanetsCheckBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/serverUrlContainer"
+        android:layout_alignParentStart="true"
+        android:text="Detect Planets, Sun &amp; Moon" />
+
+    <LinearLayout
+        android:id="@+id/serverUrlContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/detectButton"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Server URL:" />
+
+        <EditText
+            android:id="@+id/serverUrlEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter server URL"
+            android:inputType="textUri" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/detectButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="Detect Celestial Bodies" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone" />
+
+</RelativeLayout>

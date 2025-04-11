@@ -11,24 +11,19 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.gms.common.api.ResolvableApiException;
-import com.google.android.gms.tasks.Task;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-
 import com.google.android.gms.location.DeviceOrientation;
 import com.google.android.gms.location.DeviceOrientationListener;
 import com.google.android.gms.location.DeviceOrientationRequest;
@@ -49,10 +44,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private final String[] REQUIRED_PERMISSIONS;
 
     // Fused Orientation Provider components
-    // Fused Orientation Provider components
     private FusedOrientationProviderClient fusedOrientationClient;
     private DeviceOrientationListener deviceOrientationListener;
     private boolean useFusedOrientation = false;
+
+    // Buttons for different detection modes
+    private Button captureButton;
+    private Button centerSquareButton;
+    private CenterSquareOverlayView centerSquareOverlay;
+    private boolean centerSquareModeActive = false;
 
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
@@ -94,7 +94,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         sensorData = findViewById(R.id.gyroData);
         PreviewView cameraPreview = findViewById(R.id.cameraPreview);
-        Button captureButton = findViewById(R.id.captureButton);
+        centerSquareOverlay = findViewById(R.id.centerSquareOverlay);
+
+        // Always show the overlay
+        centerSquareOverlay.setVisibility(View.VISIBLE);
+
+        // Initialize buttons
+        captureButton = findViewById(R.id.captureButton);
+        centerSquareButton = findViewById(R.id.centerSquareButton);
 
         cameraHelper = new CameraHelper(this, cameraPreview);
         gpsHelper = new GPSHelper(this, this);
@@ -107,9 +114,57 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             requestPermissions();
         }
 
-        captureButton.setOnClickListener(view -> takePicture());
+        // Set up button click listeners without changing overlay visibility
+        captureButton.setOnClickListener(view -> {
+            takePictureForFullDetection();
+        });
+
+        centerSquareButton.setOnClickListener(view -> {
+            takePictureForCenterSquareDetection();
+        });
     }
 
+
+
+    private void takePictureForFullDetection() {
+        takePicture(ImageDetailsActivity.class);
+    }
+
+    private void takePictureForCenterSquareDetection() {
+        takePicture(CenterSquareDetectionActivity.class);
+    }
+
+    private void takePicture(Class<?> destinationActivity) {
+        cameraHelper.takePicture(new CameraHelper.CaptureCallback() {
+            @Override
+            public void onImageCaptured(Uri imageUri) {
+                try {
+                    Intent intent = new Intent(MainActivity.this, destinationActivity);
+                    intent.putExtra("image_uri", imageUri);
+                    intent.putExtra("latitude", latitude);
+                    intent.putExtra("longitude", longitude);
+                    intent.putExtra("altitude", altitude);
+                    intent.putExtra("quaternion_x", qx);
+                    intent.putExtra("quaternion_y", qy);
+                    intent.putExtra("quaternion_z", qz);
+                    intent.putExtra("quaternion_w", qw);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error launching activity", e);
+                    Toast.makeText(MainActivity.this, "Error launching details: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(String message) {
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // The rest of your existing code remains unchanged
     private void initOrientationSensors() {
         // Check if Google Play Services is available
         GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
@@ -131,7 +186,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-
     private void initFusedOrientationProvider() {
         // Get the FusedOrientationProviderClient instance
         fusedOrientationClient = LocationServices.getFusedOrientationProviderClient(this);
@@ -152,7 +206,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 updateDisplay();
             }
         };
-
 
         // Create orientation request with default update period
         DeviceOrientationRequest request = new DeviceOrientationRequest.Builder(
@@ -182,7 +235,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         });
     }
 
-
     private void initStandardSensors() {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -207,36 +259,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void requestPermissions() {
         permissionsLauncher.launch(REQUIRED_PERMISSIONS);
-    }
-
-    private void takePicture() {
-        cameraHelper.takePicture(new CameraHelper.CaptureCallback() {
-            @Override
-            public void onImageCaptured(Uri imageUri) {
-                try {
-                    Intent intent = new Intent(MainActivity.this, ImageDetailsActivity.class);
-                    intent.putExtra("image_uri", imageUri);
-                    intent.putExtra("latitude", latitude);
-                    intent.putExtra("longitude", longitude);
-                    intent.putExtra("altitude", altitude);
-                    intent.putExtra("quaternion_x", qx);
-                    intent.putExtra("quaternion_y", qy);
-                    intent.putExtra("quaternion_z", qz);
-                    intent.putExtra("quaternion_w", qw);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    startActivity(intent);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error launching image details activity", e);
-                    Toast.makeText(MainActivity.this, "Error launching details: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onError(String message) {
-                Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     @Override
@@ -301,7 +323,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // Stop GPS updates
         gpsHelper.stopLocationUpdates();
     }
-
 
     @Override
     protected void onResume() {
